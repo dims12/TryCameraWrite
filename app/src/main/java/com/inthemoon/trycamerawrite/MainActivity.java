@@ -1,8 +1,10 @@
 package com.inthemoon.trycamerawrite;
 
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Environment;
+import android.support.v4.provider.DocumentFile;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -14,6 +16,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -29,20 +33,32 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        intentWriteFile();
+    }
+
+    protected void intentWriteFile() {
         //Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE, Uri.fromFile(cameraDirectory));
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         startActivityForResult(intent, RQS_OPEN_DOCUMENT_TREE);
-
-        //writeFile();
     }
 
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
 
-        writeFile();
+        if( requestCode == RQS_OPEN_DOCUMENT_TREE ) {
+
+            Uri cameraDirectoryUri = data.getData();
+            DocumentFile cameraDirectoryDF = DocumentFile.fromTreeUri(this, cameraDirectoryUri);
+            try {
+                writeFile(cameraDirectoryDF);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
+
 
     public void writeFile()  {
 
@@ -51,29 +67,38 @@ public class MainActivity extends AppCompatActivity {
         File cameraDirectory = new File(DCIMDirectory, "Camera");
 
 
+        DocumentFile cameraDirectoryDF = DocumentFile.fromFile(cameraDirectory);
 
-        if( cameraDirectory.exists() ) {
+        if( cameraDirectoryDF.exists() && cameraDirectoryDF.canWrite() ) {
             try {
-                String filename = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
-
-
-                //cameraDirectory.mkdirs();
-                File file = new File(cameraDirectory, filename);
-                FileWriter writer = null;
-
-                writer = new FileWriter(file);
-                PrintWriter printWriter = new PrintWriter(writer);
-                printWriter.println("Hello World");
-
-                printWriter.close();
-                writer.close();
-
-                System.out.println("Number of files: " + cameraDirectory.listFiles().length);
-
-            }
-            catch (Exception e) {
+                writeFile(cameraDirectoryDF);
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+    }
+
+    public void writeFile2()  {
+
+
+    }
+
+    public void writeFile(DocumentFile cameraDirectoryDF) throws IOException {
+        String filename = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+
+        DocumentFile destinationFile = cameraDirectoryDF.createFile("text/plain", filename);
+
+        Uri destinationUri = destinationFile.getUri();
+
+        OutputStream outputStream = getContentResolver().openOutputStream(destinationUri);
+
+        PrintWriter printWriter = new PrintWriter(outputStream);
+
+        printWriter.println("Hello World");
+
+        printWriter.close();
+        outputStream.close();
+
     }
 }
